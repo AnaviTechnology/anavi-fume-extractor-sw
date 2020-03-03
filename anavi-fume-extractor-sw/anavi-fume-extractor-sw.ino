@@ -81,6 +81,7 @@ const int pinAdc = 0;
 #define PIN_WIFI_CONFIG 14
 
 bool fanOn = false;
+bool configWiFi = true;
 
 unsigned long sensorPreviousMillis = 0;
 const long sensorInterval = 3000;
@@ -355,14 +356,15 @@ void setup()
     sprintf(cmnd_update_topic, "cmnd/%s/update", machineId);
 #endif
 
-    int configWiFi = digitalRead(PIN_WIFI_CONFIG);
     Serial.print("WiFi: ");
-    if (LOW == configWiFi)
+    if (LOW == digitalRead(PIN_WIFI_CONFIG))
     {
+        configWiFi = false;
         Serial.println("OFF");
     }
     else
     {
+        configWiFi = true;
         Serial.println("ON");
 
         // The extra parameters to be configured (can be either global or just in the setup)
@@ -1239,7 +1241,8 @@ void loop()
 
     // Reconnect if there is an issue with the MQTT connection
     const unsigned long mqttConnectionMillis = millis();
-    if ( (false == mqttClient.connected()) && (mqttConnectionInterval <= (mqttConnectionMillis - mqttConnectionPreviousMillis)) )
+    if ( (true == configWiFi) && (false == mqttClient.connected()) &&
+          (mqttConnectionInterval <= (mqttConnectionMillis - mqttConnectionPreviousMillis)) )
     {
         mqttConnectionPreviousMillis = mqttConnectionMillis;
         mqttReconnect();
