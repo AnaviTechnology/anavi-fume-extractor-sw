@@ -1001,6 +1001,17 @@ void publishSensorDataPlain(const char* subTopic, const String& payload)
     mqttClient.publish(topic, payload.c_str(), true);
 }
 
+void publishFanState(bool isFanOn)
+{
+    char topic[200];
+    sprintf(topic,"%s/%s/%s", workgroup, machineId, "fan");
+    StaticJsonDocument<100> json;
+    json["fan"] = isFanOn;
+    char payload[100];
+    serializeJson(json, payload);
+    mqttClient.publish(topic, payload, true);
+}
+
 bool isSensorAvailable(int sensorAddress)
 {
     // Check if I2C sensor is present
@@ -1257,6 +1268,7 @@ void loop()
         fanOn = true;
         sensor_line3 = "Fan: ON";
         Serial.println("ON");
+        publishFanState(true);
       }
       else
       {
@@ -1264,6 +1276,7 @@ void loop()
         fanOn = false;
         sensor_line3 = "Fan: OFF";
         Serial.println("OFF");
+        publishFanState(false);
       }
       delay(1000);
     }
