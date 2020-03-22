@@ -110,7 +110,8 @@ char workgroup[32] = "workgroup";
 char username[20] = "";
 char password[20] = "";
 #ifdef HOME_ASSISTANT_DISCOVERY
-char ha_name[32+1] = "";        // Make sure the machineId fits.
+// Make sure the machineId fits.
+char ha_name[32+1] = "";
 #endif
 #ifdef OTA_UPGRADES
 char ota_server[40];
@@ -142,6 +143,7 @@ char line2_topic[11 + sizeof(machineId)];
 char line3_topic[11 + sizeof(machineId)];
 char cmnd_temp_coefficient_topic[14 + sizeof(machineId)];
 char cmnd_temp_format[16 + sizeof(machineId)];
+char cmnd_fan[16 + sizeof(machineId)];
 
 // The display can fit 26 "i":s on a single line.  It will fit even
 // less of other characters.
@@ -352,6 +354,7 @@ void setup()
     sprintf(line3_topic, "cmnd/%s/line3", machineId);
     sprintf(cmnd_temp_coefficient_topic, "cmnd/%s/tempcoef", machineId);
     sprintf(cmnd_temp_format, "cmnd/%s/tempformat", machineId);
+    sprintf(cmnd_fan,"%s/%s/fan", workgroup, machineId);
 #ifdef OTA_UPGRADES
     sprintf(cmnd_update_topic, "cmnd/%s/update", machineId);
 #endif
@@ -528,7 +531,7 @@ void setup()
         mqttClient.setServer(mqtt_server, mqttPort);
         mqttClient.setCallback(mqttCallback);
     
-        mqttReconnect();
+        mqttReconnect(true);
 
     }
 
@@ -701,6 +704,32 @@ void do_ota_upgrade(char *text)
 }
 #endif
 
+void processMessageFan(const char* text)
+{
+    StaticJsonDocument<100> data;
+    deserializeJson(data, text);
+    // Set temperature to Celsius or Fahrenheit and redraw screen
+    Serial.print("Changing the temperature scale to: ");
+    if (true == data.containsKey("fan"))
+    {
+        if (true == data["fan"])
+        {
+            digitalWrite(PIN_FAN, HIGH);
+            fanOn = true;
+            sensor_line3 = "Fan: ON";
+            Serial.println("ON");
+        }
+        else
+        {
+            digitalWrite(PIN_FAN, LOW);
+            fanOn = false;
+            sensor_line3 = "Fan: OFF";
+            Serial.println("OFF");
+        }
+        need_redraw = true;
+    }
+}
+
 void processMessageScale(const char* text)
 {
     StaticJsonDocument<200> data;
@@ -734,6 +763,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length)
     Serial.print(topic);
     Serial.print("] ");
     Serial.println(text);
+
+    if (strcmp(topic, cmnd_fan) == 0)
+    {
+        processMessageFan(text);
+    }
 
     if (strcmp(topic, line1_topic) == 0)
     {
@@ -785,7 +819,7 @@ void calculateMachineId()
     md5.toString().toCharArray(machineId, sizeof(machineId));
 }
 
-void mqttReconnect()
+void mqttReconnect(bool isFirstConnect)
 {
     char clientId[18 + sizeof(machineId)];
     snprintf(clientId, sizeof(clientId), "anavi-gas-detector-%s", machineId);
@@ -799,12 +833,22 @@ void mqttReconnect()
         {
             Serial.println("connected");
 
+            if (true == isFirstConnect)
+            {
+                digitalWrite(PIN_FAN, HIGH);
+                fanOn = true;
+                sensor_line3 = "Fan: ON";
+                Serial.println("ON");
+                publishFanState(true);
+            }
+
             // Subscribe to MQTT topics
             mqttClient.subscribe(line1_topic);
             mqttClient.subscribe(line2_topic);
             mqttClient.subscribe(line3_topic);
             mqttClient.subscribe(cmnd_temp_coefficient_topic);
             mqttClient.subscribe(cmnd_temp_format);
+            mqttClient.subscribe(cmnd_fan);
 #ifdef OTA_UPGRADES
             mqttClient.subscribe(cmnd_update_topic);
 #endif
@@ -1004,7 +1048,7 @@ void publishSensorDataPlain(const char* subTopic, const String& payload)
 void publishFanState(bool isFanOn)
 {
     char topic[200];
-    sprintf(topic,"%s/%s/%s", workgroup, machineId, "fan");
+    sprintf(topic,"%s/%s/fan", workgroup, machineId);
     StaticJsonDocument<100> json;
     json["fan"] = isFanOn;
     char payload[100];
@@ -1256,7 +1300,7 @@ void loop()
           (mqttConnectionInterval <= (mqttConnectionMillis - mqttConnectionPreviousMillis)) )
     {
         mqttConnectionPreviousMillis = mqttConnectionMillis;
-        mqttReconnect();
+        mqttReconnect(false);
     }
     
     if (LOW == digitalRead(PIN_FAN_BUTTON))
@@ -1278,6 +1322,7 @@ void loop()
         Serial.println("OFF");
         publishFanState(false);
       }
+      need_redraw = true;
       delay(1000);
     }
   
