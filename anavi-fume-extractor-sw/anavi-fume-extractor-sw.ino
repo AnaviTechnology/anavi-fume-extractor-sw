@@ -243,6 +243,22 @@ void checkDisplay()
     }
 }
 
+void fanTurnOn()
+{
+    digitalWrite(PIN_FAN, HIGH);
+    fanOn = true;
+    sensor_line3 = "Fan: ON";
+    Serial.println("Fan: ON");
+}
+
+void fanTurnOff()
+{
+    digitalWrite(PIN_FAN, LOW);
+    fanOn = false;
+    sensor_line3 = "Fan: OFF";
+    Serial.println("Fan: OFF");
+}
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -271,9 +287,7 @@ void setup()
     pinMode(PIN_FAN, OUTPUT);
     pinMode(PIN_FAN_BUTTON, INPUT);
     pinMode(PIN_WIFI_CONFIG, INPUT);
-    digitalWrite(PIN_FAN, HIGH);
-    fanOn = true;
-    sensor_line3 = "Fan: ON";
+    fanTurnOn();
 
     // Machine ID
     calculateMachineId();
@@ -714,17 +728,11 @@ void processMessageFan(const char* text)
     {
         if (true == data["fan"])
         {
-            digitalWrite(PIN_FAN, HIGH);
-            fanOn = true;
-            sensor_line3 = "Fan: ON";
-            Serial.println("ON");
+            fanTurnOn();
         }
         else
         {
-            digitalWrite(PIN_FAN, LOW);
-            fanOn = false;
-            sensor_line3 = "Fan: OFF";
-            Serial.println("OFF");
+            fanTurnOff();
         }
         need_redraw = true;
     }
@@ -835,10 +843,7 @@ void mqttReconnect(bool isFirstConnect)
 
             if (true == isFirstConnect)
             {
-                digitalWrite(PIN_FAN, HIGH);
-                fanOn = true;
-                sensor_line3 = "Fan: ON";
-                Serial.println("ON");
+                fanTurnOn();
                 publishFanState(true);
             }
 
@@ -1305,25 +1310,19 @@ void loop()
     
     if (LOW == digitalRead(PIN_FAN_BUTTON))
     {
-      Serial.print("Fan: ");
-      if (false == fanOn)
-      {
-        digitalWrite(PIN_FAN, HIGH);
-        fanOn = true;
-        sensor_line3 = "Fan: ON";
-        Serial.println("ON");
-        publishFanState(true);
-      }
-      else
-      {
-        digitalWrite(PIN_FAN, LOW);
-        fanOn = false;
-        sensor_line3 = "Fan: OFF";
-        Serial.println("OFF");
-        publishFanState(false);
-      }
-      need_redraw = true;
-      delay(1000);
+        if (false == fanOn)
+        {
+            fanTurnOn();
+            publishFanState(true);
+        }
+        else
+        {
+            fanTurnOff();
+            publishFanState(false);
+        }
+        need_redraw = true;
+        // Avoid accidentally double clicking the button
+        delay(500);
     }
   
     // Handle gestures at a shorter interval
