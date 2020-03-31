@@ -144,6 +144,7 @@ char line3_topic[11 + sizeof(machineId)];
 char cmnd_temp_coefficient_topic[14 + sizeof(machineId)];
 char cmnd_temp_format[16 + sizeof(machineId)];
 char cmnd_fan[16 + sizeof(machineId)];
+char state_fan[22 + sizeof(machineId)];
 
 // The display can fit 26 "i":s on a single line.  It will fit even
 // less of other characters.
@@ -259,6 +260,18 @@ void fanTurnOff()
     Serial.println("Fan: OFF");
 }
 
+void initFan()
+{
+    Serial.println("Turning on the fan...");
+    pinMode(PIN_FAN_BUTTON, INPUT);
+    pinMode(PIN_WIFI_CONFIG, INPUT);
+    fanTurnOn();
+    if (true == configWiFi)
+    {
+      publishFanState(true);
+    }
+}
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -276,20 +289,16 @@ void setup()
 
     delay(10);
 
-    //LED
+    // LED
     pinMode(pinAlarm, OUTPUT);
-    //Button
+    // Button
     pinMode(pinButton, INPUT);
-    //Custom GPIO
+    // Custom GPIO
     pinMode(pinCustom, OUTPUT);
+    // Fan
+    pinMode(PIN_FAN, OUTPUT);
 
     waitForFactoryReset();
-
-    Serial.println("Turning on the fan...");
-    pinMode(PIN_FAN, OUTPUT);
-    pinMode(PIN_FAN_BUTTON, INPUT);
-    pinMode(PIN_WIFI_CONFIG, INPUT);
-    fanTurnOn();
 
     // Machine ID
     calculateMachineId();
@@ -371,6 +380,7 @@ void setup()
     sprintf(cmnd_temp_coefficient_topic, "cmnd/%s/tempcoef", machineId);
     sprintf(cmnd_temp_format, "cmnd/%s/tempformat", machineId);
     sprintf(cmnd_fan,"%s/%s/fan", workgroup, machineId);
+    sprintf(state_fan,"%s/%s/fan/state", workgroup, machineId);
 #ifdef OTA_UPGRADES
     sprintf(cmnd_update_topic, "cmnd/%s/update", machineId);
 #endif
@@ -563,6 +573,8 @@ void setup()
     Serial.println("");
 
     setupADPS9960();
+
+    initFan();
 }
 
 void setupADPS9960()
@@ -737,6 +749,9 @@ void processMessageFan(const char* text)
             fanTurnOff();
         }
         need_redraw = true;
+
+        // publish state topic
+        publishFanState(data["fan"]);
     }
 }
 
@@ -1054,13 +1069,11 @@ void publishSensorDataPlain(const char* subTopic, const String& payload)
 
 void publishFanState(bool isFanOn)
 {
-    char topic[200];
-    sprintf(topic,"%s/%s/fan", workgroup, machineId);
     StaticJsonDocument<100> json;
     json["fan"] = isFanOn;
     char payload[100];
     serializeJson(json, payload);
-    mqttClient.publish(topic, payload, true);
+    mqttClient.publish(state_fan, payload, true);
 }
 
 bool isSensorAvailable(int sensorAddress)
