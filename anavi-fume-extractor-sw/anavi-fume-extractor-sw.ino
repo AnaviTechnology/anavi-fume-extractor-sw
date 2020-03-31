@@ -276,6 +276,8 @@ void setup()
 
     delay(10);
 
+    //LED
+    pinMode(pinAlarm, OUTPUT);
     //Button
     pinMode(pinButton, INPUT);
     //Custom GPIO
