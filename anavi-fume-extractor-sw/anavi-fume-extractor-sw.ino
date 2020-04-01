@@ -957,6 +957,61 @@ bool publishSensorDiscovery(const char *config_key,
 
     return true;
 }
+
+boolean publishFanDiscovery()
+{
+    static char topic[36 + sizeof(machineId)];
+    snprintf(topic, sizeof(topic),
+             "homeassistant/switch/%s/fan/config", machineId);
+
+    DynamicJsonDocument json(1024);
+    String componentName = String(ha_name);
+    if (0 < componentName.length())
+    {
+      componentName += " ";
+    }
+    componentName += String("ANAVI Fume Extractor");
+    json["name"] = componentName;
+    json["unique_id"] = String("anavi-") + machineId + String("-fan");
+    json["state_topic"] = String(workgroup) + "/" + machineId + String("/fan/state");
+    json["command_topic"] = String(workgroup) + "/" + machineId + String("/fan");
+    json["payload_on"] = String("{\"fan\":true}");
+    json["payload_off"] = String("{\"fan\":false}");
+
+    json["device"]["identifiers"] = machineId;
+    json["device"]["manufacturer"] = "ANAVI Technology";
+    json["device"]["model"] = "ANAVI Fume Extractor";
+    json["device"]["name"] = ha_name;
+    json["device"]["sw_version"] = ESP.getSketchMD5();
+
+    JsonArray connections = json["device"].createNestedArray("connections").createNestedArray();
+    connections.add("mac");
+    connections.add(WiFi.macAddress());
+
+    Serial.print("Home Assistant discovery topic: ");
+    Serial.println(topic);
+
+    int payload_len = measureJson(json);
+    if (!mqttClient.beginPublish(topic, payload_len, true))
+    {
+        Serial.println("beginPublish failed!\n");
+        return false;
+    }
+
+    if (serializeJson(json, mqttClient) != payload_len)
+    {
+        Serial.println("writing payload: wrong size!\n");
+        return false;
+    }
+
+    if (!mqttClient.endPublish())
+    {
+        Serial.println("endPublish failed!\n");
+        return false;
+    }
+
+    return true;
+}
 #endif
 
 void publishState()
@@ -967,6 +1022,8 @@ void publishState()
 #ifdef HOME_ASSISTANT_DISCOVERY
 
     String homeAssistantTempScale = (true == configTempCelsius) ? "°C" : "°F";
+
+    publishFanDiscovery();
 
     publishSensorDiscovery("DangerousGas",
                            "gas",
