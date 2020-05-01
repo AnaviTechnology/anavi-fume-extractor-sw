@@ -1,10 +1,15 @@
 # ANAVI Fume Extractor Default Arduino Sketch
 
-Open source Arduino sketch for ANAVI Fume Extractor powered by ESP8266 and with support for mini OLED display, analog 5V [MQ gas sensor](https://playground.arduino.cc/Main/MQGasSensors/) and up to 3 additional I2C sensor modules.
+Open source Arduino sketch for ANAVI Fume Extractor powered by ESP8266 and with support for mini OLED display, analog 5V [MQ gas sensor](https://playground.arduino.cc/Main/MQGasSensors/) and up to 3 additional I2C sensor modules. For more details
+have a look at:
+
+* http://anavi.technology/
+* https://blog.anavi.technology/?cat=129
+* https://www.crowdsupply.com/anavi-technology/fume-extractor
 
 # User's Manual
 
-TODO
+[ANAVI Fume Extractor user's manual is available here](https://github.com/AnaviTechnology/anavi-docs/blob/master/anavi-fume-extractor/anavi-fume-extractor.md).
 
 # Dependencies
 
